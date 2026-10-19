@@ -1,0 +1,1960 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MLBB Stats Developer API",
+    "version": "1.0.0",
+    "description": "Пилотный API MLBB Stats для серверных интеграций. Ключ X-API-Key хранится только на backend. API-токен Bearer выдаётся через send-code → verify и действует 24 часа; refresh token отсутствует. Прошлые сезоны требуют токен владельца и его активный Premium. Данные зависят от доступного кеша; null означает отсутствие данных, а не ноль. Лимиты: 30 запросов/мин и 1000 за UTC-сутки на приложение, 60/мин/IP, до 2 параллельных запросов приложения. Отправка кода: 3/15 мин/игрок, интервал 60 секунд, 10/15 мин/приложение. Проверка: 5/15 мин/игрок, 20/15 мин/приложение; challenge действует 5 минут, до 3 попыток. Дополнительно действуют общие лимиты сервиса. При ограничении учитывайте Retry-After. Проценты 0–100, время боя в секундах. История матчей не предоставляется. Подробности и примеры — README.md."
+  },
+  "servers": [
+    {
+      "url": "https://mlbb-stats.ru/api/v1",
+      "description": "Production"
+    }
+  ],
+  "security": [
+    {
+      "ApiKey": []
+    }
+  ],
+  "paths": {
+    "/auth/send-code": {
+      "post": {
+        "summary": "Отправить код в игровую почту",
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Успешно. Недоступные данные: null или пустой список; смотрите meta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "challengeId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "expiresIn": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON превышает 4 КиБ.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Неподдерживаемое сжатие или кодировка тела.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "playerId",
+                  "serverId"
+                ],
+                "properties": {
+                  "playerId": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "serverId": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 99999
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify": {
+      "post": {
+        "summary": "Проверить код и сохранить авторизованного игрока",
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Успешно. Недоступные данные: null или пустой список; смотрите meta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tokenType": {
+                          "type": "string",
+                          "enum": [
+                            "Bearer"
+                          ]
+                        },
+                        "expiresIn": {
+                          "type": "integer"
+                        },
+                        "accessToken": {
+                          "type": "string"
+                        },
+                        "player": {
+                          "$ref": "#/components/schemas/Profile"
+                        }
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON превышает 4 КиБ.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Неподдерживаемое сжатие или кодировка тела.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "challengeId",
+                  "code"
+                ],
+                "properties": {
+                  "challengeId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9]{4,16}$"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Профиль, Premium и срок сессии",
+        "security": [
+          {
+            "ApiKey": [],
+            "PlayerSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Успешно. Недоступные данные: null или пустой список; смотрите meta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/Profile"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "isPremium": {
+                              "type": "boolean"
+                            },
+                            "sessionExpiresAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Отозвать сессию",
+        "security": [
+          {
+            "ApiKey": [],
+            "PlayerSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Сессия отозвана"
+          },
+          "400": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON превышает 4 КиБ.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Неподдерживаемое сжатие или кодировка тела.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/players/{playerKey}": {
+      "get": {
+        "summary": "Базовый профиль. Без include статистика не рассчитывается.",
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "playerKey",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*-[1-9][0-9]*$"
+            },
+            "description": "ID игрока и сервера через дефис: 12345-1234."
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Поля через запятую. Вложенные: currentRank.stars; stats.games требует include=stats. Неизвестные поля → 400."
+          },
+          {
+            "in": "query",
+            "name": "include",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "stats"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно. Недоступные данные: null или пустой список; смотрите meta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Profile"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/players/{playerKey}/stats": {
+      "get": {
+        "summary": "Общие метрики доступной истории",
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "playerKey",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*-[1-9][0-9]*$"
+            },
+            "description": "ID игрока и сервера через дефис: 12345-1234."
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Поля через запятую. Вложенные: currentRank.stars; stats.games требует include=stats. Неизвестные поля → 400."
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "ranked",
+                "classic",
+                "rising"
+              ],
+              "default": "all"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно. Недоступные данные: null или пустой список; смотрите meta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Stats"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/players/{playerKey}/seasons": {
+      "get": {
+        "summary": "Краткие сведения о сезонах и доступность подробностей",
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "playerKey",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*-[1-9][0-9]*$"
+            },
+            "description": "ID игрока и сервера через дефис: 12345-1234."
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Поля через запятую. Вложенные: currentRank.stars; stats.games требует include=stats. Неизвестные поля → 400."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно. Недоступные данные: null или пустой список; смотрите meta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Season"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/players/{playerKey}/seasons/{season}": {
+      "get": {
+        "summary": "Подробности сезона. Прошлый — только владельцу с Premium.",
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "playerKey",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*-[1-9][0-9]*$"
+            },
+            "description": "ID игрока и сервера через дефис: 12345-1234."
+          },
+          {
+            "in": "path",
+            "name": "season",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Поля через запятую. Вложенные: currentRank.stars; stats.games требует include=stats. Неизвестные поля → 400."
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "ranked",
+                "classic",
+                "rising"
+              ],
+              "default": "all"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно. Недоступные данные: null или пустой список; смотрите meta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Stats"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/players/{playerKey}/heroes": {
+      "get": {
+        "summary": "Герои за всю историю либо сезон",
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "playerKey",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*-[1-9][0-9]*$"
+            },
+            "description": "ID игрока и сервера через дефис: 12345-1234."
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Поля через запятую. Вложенные: currentRank.stars; stats.games требует include=stats. Неизвестные поля → 400."
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "ranked",
+                "classic",
+                "rising"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000,
+              "default": 0
+            }
+          },
+          {
+            "in": "query",
+            "name": "season",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "-games",
+                "-winRate",
+                "heroId"
+              ],
+              "default": "-games"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно. Недоступные данные: null или пустой список; смотрите meta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Hero"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/players/{playerKey}/heroes/{heroId}": {
+      "get": {
+        "summary": "Статистика выбранного героя",
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "playerKey",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*-[1-9][0-9]*$"
+            },
+            "description": "ID игрока и сервера через дефис: 12345-1234."
+          },
+          {
+            "in": "path",
+            "name": "heroId",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Поля через запятую. Вложенные: currentRank.stars; stats.games требует include=stats. Неизвестные поля → 400."
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "ranked",
+                "classic",
+                "rising"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "in": "query",
+            "name": "season",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно. Недоступные данные: null или пустой список; смотрите meta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Hero"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ошибка запроса, доступа, квоты или сервиса. Единый JSON: error.code и meta.requestId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Ожидание в секундах при исчерпании квоты или перегрузке.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              }
+            }
+          },
+          "meta": {
+            "type": "object"
+          }
+        }
+      },
+      "Stats": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "games": {
+            "type": "number",
+            "nullable": false
+          },
+          "wins": {
+            "type": "number",
+            "nullable": false
+          },
+          "winRate": {
+            "type": "number",
+            "nullable": false
+          },
+          "kills": {
+            "type": "number",
+            "nullable": true
+          },
+          "deaths": {
+            "type": "number",
+            "nullable": true
+          },
+          "assists": {
+            "type": "number",
+            "nullable": true
+          },
+          "kda": {
+            "type": "number",
+            "nullable": true
+          },
+          "kdaRatio": {
+            "type": "number",
+            "nullable": true
+          },
+          "mvp": {
+            "type": "number",
+            "nullable": true
+          },
+          "mvpRate": {
+            "type": "number",
+            "nullable": true
+          },
+          "avgDamage": {
+            "type": "number",
+            "nullable": true
+          },
+          "avgDamageTaken": {
+            "type": "number",
+            "nullable": true
+          },
+          "avgGoldPerMinute": {
+            "type": "number",
+            "nullable": true
+          },
+          "teamfightParticipation": {
+            "type": "number",
+            "nullable": true
+          },
+          "battleTimeSeconds": {
+            "type": "number",
+            "nullable": true
+          },
+          "heroesPlayed": {
+            "type": "number",
+            "nullable": false
+          }
+        }
+      },
+      "Rank": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "subrank": {
+            "type": "integer",
+            "nullable": true
+          },
+          "stars": {
+            "type": "integer"
+          },
+          "tier": {
+            "type": "string"
+          }
+        }
+      },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "type": "integer"
+          },
+          "serverId": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer"
+          },
+          "currentRank": {
+            "$ref": "#/components/schemas/Rank"
+          },
+          "historyRank": {
+            "$ref": "#/components/schemas/Rank"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/Stats"
+          }
+        }
+      },
+      "Hero": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "heroId": {
+            "type": "number",
+            "nullable": false
+          },
+          "name": {
+            "type": "string",
+            "nullable": false
+          },
+          "nameRu": {
+            "type": "string",
+            "nullable": false
+          },
+          "icon": {
+            "type": "string",
+            "nullable": false
+          },
+          "games": {
+            "type": "number",
+            "nullable": false
+          },
+          "wins": {
+            "type": "number",
+            "nullable": false
+          },
+          "winRate": {
+            "type": "number",
+            "nullable": false
+          },
+          "kills": {
+            "type": "number",
+            "nullable": true
+          },
+          "deaths": {
+            "type": "number",
+            "nullable": true
+          },
+          "assists": {
+            "type": "number",
+            "nullable": true
+          },
+          "kda": {
+            "type": "number",
+            "nullable": true
+          },
+          "kdaRatio": {
+            "type": "number",
+            "nullable": true
+          },
+          "mvp": {
+            "type": "number",
+            "nullable": true
+          },
+          "avgScore": {
+            "type": "number",
+            "nullable": true
+          },
+          "avgDamage": {
+            "type": "number",
+            "nullable": true
+          },
+          "avgDamageTaken": {
+            "type": "number",
+            "nullable": true
+          },
+          "avgGoldPerMinute": {
+            "type": "number",
+            "nullable": true
+          },
+          "teamfightParticipation": {
+            "type": "number",
+            "nullable": true
+          },
+          "battleTimeSeconds": {
+            "type": "number",
+            "nullable": true
+          },
+          "expert": {
+            "type": "boolean",
+            "nullable": true
+          }
+        }
+      },
+      "Season": {
+        "type": "object",
+        "properties": {
+          "season": {
+            "type": "number"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "all",
+              "classic",
+              "ranked",
+              "rising"
+            ]
+          },
+          "games": {
+            "type": "number"
+          },
+          "winRate": {
+            "type": "number"
+          },
+          "kda": {
+            "type": "number",
+            "nullable": true
+          },
+          "mvp": {
+            "type": "number",
+            "nullable": true
+          },
+          "accessible": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Freshness": {
+        "type": "object",
+        "properties": {
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "stale": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Meta": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "cache"
+            ]
+          },
+          "profile": {
+            "$ref": "#/components/schemas/Freshness"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/Freshness"
+          },
+          "requiresReauth": {
+            "type": "boolean"
+          },
+          "refreshQueued": {
+            "type": "boolean"
+          },
+          "completeness": {
+            "type": "string",
+            "enum": [
+              "detailed",
+              "partial",
+              "aggregate_only",
+              "unavailable"
+            ]
+          },
+          "detailStatsAvailable": {
+            "type": "boolean"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "ApiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      },
+      "PlayerSession": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

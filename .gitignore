@@ -1,0 +1,6 @@
+.env
+.env.*
+!.env.example
+http-client.private.env.json
+*.log
+node_modules/

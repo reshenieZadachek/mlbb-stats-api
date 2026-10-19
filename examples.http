@@ -1,0 +1,66 @@
+# VS Code REST Client syntax. Set environment variables before starting your IDE.
+# Never paste a real key/token/code into this file or commit it.
+# Execute requests individually. Send a game code only with the player's consent.
+@baseUrl = https://mlbb-stats.ru/api/v1
+@apiKey = {{$processEnv MLBB_API_KEY}}
+@token = {{$processEnv MLBB_ACCESS_TOKEN}}
+@playerKey = 12345678-1234
+@challengeId = {{$processEnv MLBB_CHALLENGE_ID}}
+@code = {{$processEnv MLBB_LOGIN_CODE}}
+
+### Schema, no key required
+GET {{baseUrl}}/openapi.json
+
+### 1. Send code. Replace BOTH numeric IDs with the consenting player's IDs.
+POST {{baseUrl}}/auth/send-code
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{"playerId":12345678,"serverId":1234}
+
+### 2. Verify. Set MLBB_CHALLENGE_ID and MLBB_LOGIN_CODE privately.
+POST {{baseUrl}}/auth/verify
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{"challengeId":"{{challengeId}}","code":"{{code}}"}
+
+### 3. Basic profile, no player token required
+GET {{baseUrl}}/players/{{playerKey}}?fields=name,avatar,currentRank.stars
+X-API-Key: {{apiKey}}
+
+### 4. Profile with selected statistics
+GET {{baseUrl}}/players/{{playerKey}}?include=stats&fields=name,stats.games,stats.winRate
+X-API-Key: {{apiKey}}
+
+### 5. Overall metrics, Ranked mode
+GET {{baseUrl}}/players/{{playerKey}}/stats?mode=ranked
+X-API-Key: {{apiKey}}
+
+### 6. Season summaries, page 1
+GET {{baseUrl}}/players/{{playerKey}}/seasons?limit=50&offset=0
+X-API-Key: {{apiKey}}
+Authorization: Bearer {{token}}
+
+### 7. One season; historical detail requires owner + active Premium
+GET {{baseUrl}}/players/{{playerKey}}/seasons/42?mode=ranked
+X-API-Key: {{apiKey}}
+Authorization: Bearer {{token}}
+
+### 8. Top heroes
+GET {{baseUrl}}/players/{{playerKey}}/heroes?limit=3&sort=-games&fields=heroId,nameRu,games,winRate
+X-API-Key: {{apiKey}}
+
+### 9. One hero; optional ?season=42&mode=ranked
+GET {{baseUrl}}/players/{{playerKey}}/heroes/1
+X-API-Key: {{apiKey}}
+
+### 10. Current player session. Set MLBB_ACCESS_TOKEN from auth/verify privately.
+GET {{baseUrl}}/auth/me
+X-API-Key: {{apiKey}}
+Authorization: Bearer {{token}}
+
+### 11. Revoke THIS API session (204, no JSON body)
+POST {{baseUrl}}/auth/logout
+X-API-Key: {{apiKey}}
+Authorization: Bearer {{token}}
